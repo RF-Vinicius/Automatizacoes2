@@ -1,0 +1,95 @@
+import pandas as pd
+import os
+import shutil
+import re
+
+def renomear_revisao_docs(caminho_doc):
+    
+    caminho_pasta_nao_encontrados = os.path.join(caminho_doc, "NaoEncontradosRevisao")
+    caminho_pasta_nomes_iguais = os.path.join(caminho_doc, "NomesIguais")
+    ignorar_mn_comments = os.path.join(caminho_doc, "IgnorarMNComments")
+    os.makedirs(caminho_pasta_nao_encontrados, exist_ok=True)
+    os.makedirs(caminho_pasta_nomes_iguais, exist_ok=True)
+    os.makedirs(ignorar_mn_comments, exist_ok=True)
+
+    padrao01 = r"(R)(\d{2})"
+    padrao02 = r"(V)(\d{2})"
+    padrao02_1 = r"(VR)(\d{2})"
+    padrai02_2 = r"(V00R)(\d{2})"
+    padrao03 = r"MN"
+
+    # Percorrer todos os arquivos na pasta de origem
+    for nome_arquivo in os.listdir(caminho_doc):
+        if os.path.isdir(os.path.join(caminho_doc, nome_arquivo)):
+            continue
+        
+        nome_base, extensao = os.path.splitext(nome_arquivo)
+        #nome_base = str(nome_base).replace("_", "-")
+        listNome = str(nome_base).split("-")
+        
+        
+        if (re.search(padrao02, "".join(listNome[-2:]))) or (re.search(padrao02_1, "".join(listNome[-2:]))): #Caso 02
+            novo_nome = listNome
+            novo_nome[-2] = novo_nome[-2].replace("_", "-")
+            novo_nome_documento = "-".join(novo_nome[:-2]) + "-" + "".join(novo_nome[-2:]).replace("R", "") + extensao  
+            listNovoNome = novo_nome_documento.split("-")
+            revisao = listNovoNome[-1].split(".")[0]
+            novo_nome_documento = "-".join(listNovoNome[:-1]) + "-" + revisao[-2:] + revisao[0] + extensao
+            x = novo_nome_documento
+        elif (re.search(padrai02_2, "".join(listNome[-3:]))): #Caso 02 - 00
+            novo_nome = listNome
+            novo_nome.pop(7)
+            novo_nome[-2] = novo_nome[-2].replace("_", "-")
+            novo_nome_documento = "-".join(novo_nome[:-2]) + "-" + "".join(novo_nome[-2:]).replace("R", "") + extensao
+            listNovoNome = novo_nome_documento.split("-")
+            revisao = listNovoNome[-1].split(".")[0]
+            novo_nome_documento = "-".join(listNovoNome[:-1]) + "-" + revisao[-2:] + revisao[0] + extensao
+            x = novo_nome_documento
+        elif (re.search(padrao03, nome_base)): #Caso 03
+            caminho_origem = os.path.join(caminho_doc, nome_arquivo)
+            caminho_destino = os.path.join(ignorar_mn_comments, nome_arquivo)
+            try:
+                shutil.move(caminho_origem, ignorar_mn_comments)
+                print(f"↔ Movido: '{nome_arquivo}' -> '{ignorar_mn_comments}'")
+            except Exception as e:
+                print(f"ERRO ao mover o arquivo '{nome_arquivo}': {e}")
+            continue
+
+        elif (re.search(padrao01, listNome[-1])) and not (re.search(padrao03, nome_base)): #Caso 01
+            novo_nome = listNome
+            novo_nome[-1] = novo_nome[-1].replace("R","E")
+            novo_nome[-1] = novo_nome[-1][-2:] + novo_nome[-1][0]
+            novo_nome_documento = "-".join(novo_nome) + extensao
+        else:
+            caminho_origem = os.path.join(caminho_doc, nome_arquivo)
+            caminho_destino = os.path.join(caminho_pasta_nao_encontrados, nome_arquivo)
+            try:
+                shutil.move(caminho_origem, caminho_destino)
+                print(f"↔ Movido: '{nome_arquivo}' -> '{caminho_pasta_nao_encontrados}'")
+            except Exception as e:
+                print(f"ERRO ao mover o arquivo '{nome_arquivo}': {e}")
+            continue
+
+        caminho_antigo = os.path.join(caminho_doc, nome_arquivo)
+        caminho_novo = os.path.join(caminho_doc, novo_nome_documento)
+
+        try:
+            os.rename(caminho_antigo, caminho_novo)
+            print(f"'{nome_arquivo}' -> '{novo_nome_documento}'")
+        except FileExistsError:
+            print(f"ALERTA: O arquivo '{novo_nome_documento}' já existe. Não foi possível renomear '{nome_arquivo}'.")
+            caminho_origem = os.path.join(caminho_doc, nome_arquivo)
+            caminho_destino = os.path.join(caminho_pasta_nomes_iguais, nome_arquivo)
+            try:
+                shutil.move(caminho_origem, caminho_destino)
+                print(f"↔ Movido: '{nome_arquivo}' -> '{caminho_pasta_nomes_iguais}'")
+            except Exception as e:
+                print(f"ERRO ao mover o arquivo '{nome_arquivo}': {e}")
+        except Exception as e:
+            print(f"ERRO ao renomear o arquivo '{nome_arquivo}': {e}")
+
+if __name__ == "__main__":
+
+    caminho_doc = r"C:\Users\vini9\OneDrive\Área de Trabalho\ConstruCode\Automatizacoes2\Renomear"
+
+    renomear_revisao_docs(caminho_doc)
